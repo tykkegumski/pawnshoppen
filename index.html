@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="da"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pawnshop ERP</title>
+<style>
+:root{--bg:#f6f5f1;--card:#fff;--tx:#1d1d1b;--mu:#6b6a64;--bd:#e2e0d8;--ac:#b8860b;--ok:#2e7d32;--bad:#c62828;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15150f;--card:#1f1f17;--tx:#eeeadc;--mu:#9a977f;--bd:#33321f;--ac:#e0b341;--ok:#66bb6a;--bad:#ef5350}}
+:root[data-theme="dark"]{--bg:#15150f;--card:#1f1f17;--tx:#eeeadc;--mu:#9a977f;--bd:#33321f;--ac:#e0b341;--ok:#66bb6a;--bad:#ef5350}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,sans-serif}
+header{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--bd);flex-wrap:wrap;gap:8px}
+h1{font-size:18px;margin:0}h1 span{color:var(--ac)}.hr{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+nav,.chips{display:flex;gap:6px;overflow-x:auto;padding:10px 0}nav{padding:10px 16px}
+button,input,select{font:inherit;color:var(--tx);background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:8px 10px}
+button{cursor:pointer;white-space:nowrap}button.on,button.pri{background:var(--ac);color:#111;border-color:var(--ac);font-weight:600}
+button.del{color:var(--bad)}button.out{background:var(--bad);color:#fff;border-color:var(--bad);font-weight:600}
+button:disabled,input:disabled,select:disabled{opacity:.5;cursor:not-allowed}
+main{max-width:1000px;margin:0 auto;padding:0 16px 40px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:14px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:end}.row>*{flex:1 1 130px}
+label{display:block;font-size:12px;color:var(--mu);margin-bottom:3px}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:6px;border-bottom:1px solid var(--bd);white-space:nowrap}th{font-size:12px;color:var(--mu)}
+td input[type=number]{width:85px;padding:4px 6px}tr.cat td{background:var(--bg);font-weight:600;color:var(--ac)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;max-height:280px;overflow:auto;margin-top:8px}
+.grid button{text-align:left;padding:7px 9px}.grid small{display:block;color:var(--mu)}
+.ok{color:var(--ok)}.bad{color:var(--bad)}.mu{color:var(--mu)}.big{font-size:26px;font-weight:700}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--tx);color:var(--bg);padding:10px 16px;border-radius:8px;display:none;z-index:9}
+.seg{display:flex;gap:6px}.seg button{flex:1}.ac{position:relative}
+#sg{position:absolute;left:0;right:0;top:100%;z-index:5;background:var(--card);border:1px solid var(--bd);border-radius:8px;display:none;overflow:hidden}
+#sg button{display:block;width:100%;text-align:left;border:0;border-radius:0;border-bottom:1px solid var(--bd)}
+.sum{display:flex;justify-content:space-between;padding:3px 0}.tot{border-top:2px solid var(--ac);margin-top:6px;padding-top:8px}
+#login{position:fixed;inset:0;background:var(--bg);z-index:20;display:none;align-items:center;justify-content:center}
+#bar{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));background:var(--card);border-top:2px solid var(--ac);display:none;justify-content:space-between;align-items:center;gap:8px;z-index:10;flex-wrap:wrap}
+#toast{bottom:calc(80px + env(safe-area-inset-bottom,0px))}main{padding-bottom:90px}
+td input:not([type=number]):not([type=checkbox]){width:140px}
+</style></head><body>
+<header><h1>🏷️ <span>Pawnshop</span> System</h1><div class="hr"><span class="mu" id="stats"></span><span class="mu" id="who"></span><button onclick="logout()">Log ud</button><button id="clk" onclick="clock()"></button></div></header>
+<nav id="nav"></nav><main id="v"></main><div id="login"><div class="card" style="width:min(360px,92vw)"><h1>🏷️ <span>Pawnshop</span> Login</h1><div style="margin-top:12px"><label>Brugernavn</label><input id="lu" style="width:100%" autocomplete="username" onkeydown="if(event.key==='Enter')$('#lp').focus()"></div><div style="margin:10px 0"><label>Password</label><input id="lp" type="password" style="width:100%" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()"></div><button class="pri" style="width:100%" onclick="login()">Log ind</button><p class="bad" id="le"></p><p class="mu" style="font-size:12px;margin:0">Kun for ansatte.</p></div></div>
+<div id="bar"><span>⚠️ Du har ændringer, der ikke er gemt</span><span><button onclick="cancel()">Fortryd</button> <button class="pri" onclick="saveAll()">💾 Gem</button></span></div>
+<div id="toast"></div>
+<script>
+const K='pawn_v7',CATS=['Elektronik','Lockpicks','Andet','Materialer','Raffinerede materialer','Stoffer','Veste & Plader','Accessories','Skud','Våben'];
+let sess=null,D=null,kq='',ksel=null,S,tab='handel',type='koeb',q='',cat='Alle',cart=[],jw=0,cuName='',cuId=null,ck='',cview='all';
+const $=s=>document.querySelector(s),uid=()=>Math.random().toString(36).slice(2,9);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const m=n=>Math.round(n).toLocaleString('da-DK')+' kr',hm=ms=>{const t=Math.floor(ms/6e4);return Math.floor(t/60)+'t '+t%60+'m'};
+function seed(){const items=[];
+const add=(c,a)=>a.forEach(([n,b])=>items.push({id:uid(),name:n,cat:c,qty:0,buy:b,sell:Math.round(b*1.3/5)*5,canBuy:true,canSell:true}));
+add('Elektronik',[['Bagpanel',1500],['Dekrypteringsenhed',200],['Kabler',700],['KryptaNode Modul',1250],['Xeltrix Enhed',1250],['SFruit S420',7500],['Ødelagt Vinkelsliber',350],['Slagboremaskine',3000],['Rød USB',25000],['Blå USB',35000],['Grøn USB',40000]]);
+add('Lockpicks',[['Normal Lockpick',400],['Advanced Lockpick',250]]);
+add('Andet',[['C4',35000],['Bandage',200],['Sportstaske',500],['Nummerplade',4500],['Stofsæk',15],['Strips',15],['Lighter',15]]);
+add('Materialer',[['Gummi',120],['Stål',150],['Glas',120],['Metalskrot',110],['Elektronik',100],['Tekstil',50],['Træ',20],['Aluminium',110],['Plastik',110],['Kobber',120],['Genbrugsmaterialer',350]]);
+add('Raffinerede materialer',[['Raf. Gummi',1200],['Raf. Stål',1500],['Raf. Glas',600],['Raf. Metal',1000],['Raf. El',600],['Raf. Træ',600],['Raf. Alu',1000],['Raf. Plastik',1000],['Raf. Kobber',1200]]);
+const id=n=>items.find(i=>i.name===n).id,o=uid(),c=n=>({id:uid(),name:n});
+return{items,tx:[],hours:[],customers:[c('Simon'),c('Simone'),c('Simon Jensen'),c('Maria')],comps:[{id:uid(),name:'Uge 1'}],settings:{jp:90},emps:[['Gundo','6767',5],['Mendoza','123456',3],['Kerim','1313',5],['Summer','4040',1],['Kevin','1889',3],['Nora','1611',1],['Manuel','6116',1]].map(([n,p,r])=>({id:uid(),name:n,user:n.toLowerCase(),pw:hp(p,n.toLowerCase()),pwv:p,rank:r})),
+recipes:[{id:uid(),out:id('Raf. Gummi'),outQty:1,mats:[{item:id('Gummi'),qty:5}]},{id:uid(),out:id('Normal Lockpick'),outQty:1,mats:[{item:id('Raf. Stål'),qty:1},{item:id('Plastik'),qty:2}]}]}}
+try{S=JSON.parse(localStorage.getItem(K))}catch(e){}if(!S)S=seed();
+try{sess=sessionStorage.getItem('pawn_sess')}catch(e){}
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
+const toast=t=>{const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2600)};
+const item=id=>S.items.find(i=>i.id===id),byName=n=>S.items.find(i=>i.name.toLowerCase()===(n||'').trim().toLowerCase());
+const me=()=>S.emps.find(e=>e.id===sess),own=()=>me()?.rank===5,dr=()=>D||S,emp=id=>S.emps.find(e=>e.id===id),cust=id=>S.customers.find(c=>c.id===id);
+const need=()=>own()||(toast('Kun ejere (grad 5) har adgang til dette'),false);
+const open=id=>S.hours.find(h=>h.emp===id&&!h.out);
+const filt=()=>dr().items.filter(i=>(cat==='Alle'||i.cat===cat)&&i.name.toLowerCase().includes(q.toLowerCase()));
+const compOpts=v=>`<option value="">Ingen konkurrence</option>`+S.comps.slice().reverse().map(c=>`<option value="${c.id}" ${v===c.id?'selected':''}>${esc(c.name)}</option>`).join('');
+const chips=()=>`<div class="chips">${['Alle',...CATS].map(c=>`<button class="${cat===c?'on':''}" onclick="cat=this.dataset.c;render()" data-c="${esc(c)}">${esc(c)}</button>`).join('')}</div>`;
+const sbox=f=>`<input placeholder="🔍 Søg item…" value="${esc(q)}" oninput="q=this.value;${f}()" style="width:100%">`;
+const stats=()=>$('#stats').textContent=`${S.items.length} items · lager ${m(S.items.reduce((a,i)=>a+i.qty*i.buy,0))}`;
+function render(){save();const ok=sess&&me();$('#login').style.display=ok?'none':'flex';
+if(!ok){sess=null;D=null;$('#nav').innerHTML='';$('#v').innerHTML='';$('#who').textContent='';$('#clk').style.display='none';$('#bar').style.display='none';return}
+$('#clk').style.display='';if(tab==='admin'&&!own())tab='handel';
+$('#nav').innerHTML=[['handel','Køb / Salg'],['kunder','Kunder'],['lager','Lager'],['craft','Crafting'],['comp','Konkurrencer'],['log','Handler'],['emp','Ansatte'],...(own()?[['admin','Administrer']]:[])].map(([k,l])=>`<button class="${tab===k?'on':''}" onclick="go('${k}')">${l}</button>`).join('');
+$('#who').textContent=me().name+' · '+(me().rank===5?'Ejer':'grad '+me().rank);
+const o=open(sess);$('#clk').textContent=o?'⏹ Stempel ud':'▶ Stempel ind';$('#clk').className=o?'out':'pri';stats();
+$('#bar').style.display=D?'flex':'none';
+$('#v').innerHTML=({handel:vHandel,kunder:vKunder,lager:vLager,craft:vCraft,comp:vComp,log:vLog,emp:vEmp,admin:vAdmin})[tab]();
+if(tab==='handel'){crt();pk();sug()}if(tab==='lager')lt();if(tab==='kunder')kl()}
+function clock(){const o=open(sess),t=Date.now();if(o){o.out=t;toast('Stemplet ud · '+hm(t-o.in))}else{S.hours.push({id:uid(),emp:sess,in:t,out:null});toast('Stemplet ind')}render()}
+/* ---- Køb / Salg ---- */
+function vHandel(){const k=type==='koeb';return`${open(sess)?'':'<div class="card bad">⏱️ Du er ikke stemplet ind – dine handler tæller ikke i performance.</div>'}<div class="card"><div class="row"><div class="ac"><label>Kunde (søg eller opret ny)</label><input id="cn" autocomplete="off" value="${esc(cuName)}" oninput="cuName=this.value;cuId=null;sug()" placeholder="Skriv navn…"><div id="sg"></div></div><div><label>Konkurrence</label><select onchange="ck=this.value">${compOpts(ck)}</select></div></div><div id="cb" class="mu" style="margin-top:6px"></div></div>
+<div class="card"><div class="seg"><button class="${k?'pri':''}" onclick="setType('koeb')">Køb fra kunde (+lager)</button><button class="${!k?'pri':''}" onclick="setType('salg')">Salg til kunde (−lager)</button></div>${chips()}${sbox('pk')}<div class="grid" id="pk"></div></div>
+<div class="card"><b>Kurv</b><div class="tw" id="crt"></div></div>
+${k?`<div class="card"><b>💎 Smykker – solgt ved kassen</b><div class="row" style="margin-top:8px"><div><label>Beløb (kr)</label><input type="number" min="0" value="${jw||''}" oninput="jw=+this.value||0;tots()"></div><div><label>Udbetaling (${Math.round(JP()*100)}%)</label><div class="big ok" id="jp">0 kr</div></div></div></div>`:''}
+<div class="card" id="tot"></div>`}
+function setType(t){type=t;cart=[];render()}
+function sug(){const sg=$('#sg'),cb=$('#cb');if(!sg)return;const v=cuName.trim().toLowerCase();
+if(!v){sg.style.display='none';cb.textContent='';return}
+const ex=S.customers.find(c=>c.name.toLowerCase()===v);if(ex&&!cuId)cuId=ex.id;
+const l=S.customers.filter(c=>c.name.toLowerCase().includes(v)&&c.id!==cuId).sort((a,b)=>(b.name.toLowerCase().startsWith(v))-(a.name.toLowerCase().startsWith(v))).slice(0,6);
+sg.innerHTML=l.map(c=>`<button onclick="pick('${c.id}')">${esc(c.name)}</button>`).join('');sg.style.display=l.length&&!(cuId&&l.length===0)?'block':'none';
+cb.innerHTML=cuId?'✅ Eksisterende kunde: <b>'+esc(cust(cuId).name)+'</b>':'🆕 Ny kunde oprettes: <b>'+esc(cuName.trim())+'</b>'}
+function pick(id){cuId=id;cuName=cust(id).name;$('#cn').value=cuName;$('#sg').style.display='none';sug()}
+function pk(){const k=type==='koeb';$('#pk').innerHTML=filt().map(i=>{const on=k?i.canBuy:i.canSell;return`<button ${on?'':'disabled'} onclick="addCart('${i.id}')">${esc(i.name)}<small>${on?m(k?i.buy:i.sell)+' · lager '+i.qty:(k?'Vi køber ikke':'Vi sælger ikke')}</small></button>`}).join('')||'<span class="mu">Ingen items</span>'}
+function addCart(id){const c=cart.find(x=>x.id===id);c?c.qty++:cart.push({id,qty:1,price:item(id)[type==='salg'?'sell':'buy']});crt()}
+function sums(){const it=cart.reduce((a,c)=>a+c.qty*c.price,0),jp=type==='koeb'?Math.round(jw*JP()):0;return{it,jp,total:it+jp}}
+function crt(){$('#crt').innerHTML=cart.length?`<table><tr><th>Item</th><th>Antal</th><th>Pris/stk</th><th>Sum</th><th></th></tr>${cart.map((c,n)=>`<tr><td>${esc(item(c.id).name)}</td><td><input type="number" min="1" value="${c.qty}" onchange="cart[${n}].qty=Math.max(1,+this.value||1);crt()"></td><td>${m(c.price)}</td><td>${m(c.qty*c.price)}</td><td><button class="del" onclick="cart.splice(${n},1);crt()">✕</button></td></tr>`).join('')}</table>`:'<p class="mu" style="margin:6px 0 0">Klik på items for at tilføje</p>';tots()}
+function tots(){const s=sums(),k=type==='koeb',j=$('#jp');if(j)j.textContent=m(s.jp);
+$('#tot').innerHTML=`<div class="sum"><span>Varer</span><span>${m(s.it)}</span></div>${k?`<div class="sum"><span>Smykker (${Math.round(JP()*100)}%)</span><span>${m(s.jp)}</span></div>`:''}<div class="sum tot"><b>${k?'Total udbetaling til kunde':'Samlet beløb kunden betaler'}</b><span class="big ${k?'bad':'ok'}">${m(s.total)}</span></div><p style="margin:10px 0 0"><button class="pri" onclick="doTrade()">${k?'Gennemfør køb':'Gennemfør salg'}</button></p>`}
+function doTrade(){const nm=cuName.trim(),s=sums();if(!nm)return toast('Skriv kundens navn');if(!cart.length&&!(type==='koeb'&&jw>0))return toast('Tilføj items eller smykker');
+if(type==='salg'){const b=cart.find(x=>item(x.id).qty<x.qty);if(b)return toast('Ikke nok '+item(b.id).name+' ('+item(b.id).qty+')')}
+let c=cuId?cust(cuId):S.customers.find(x=>x.name.toLowerCase()===nm.toLowerCase());if(!c){c={id:uid(),name:nm};S.customers.push(c)}
+cart.forEach(x=>item(x.id).qty+=type==='salg'?-x.qty:x.qty);
+const lines=cart.map(x=>({item:x.id,name:item(x.id).name,qty:x.qty,price:x.price,cost:item(x.id).buy}));S.tx.push({id:uid(),t:Date.now(),type,lines,items:s.it,jewelry:type==='koeb'?jw:0,jewelPayout:s.jp,total:s.total,profit:(type==='salg'?lines.reduce((a,l)=>a+l.qty*(l.price-l.cost),0):0)+(type==='koeb'?Math.round(jw*(1-JP())):0),onShift:!!open(sess),customer:c.id,comp:ck,emp:sess});
+toast((type==='koeb'?'Udbetal ':'Modtag ')+m(s.total)+(type==='koeb'?' til ':' fra ')+c.name);cart=[];jw=0;cuName='';cuId=null;render()}
+/* ---- Lager ---- */
+function vLager(){return`<div class="card">${own()?'':'<p class="mu" style="margin:0 0 6px">🔒 Kun ejere (grad 5) kan redigere priser, items og køb/salg-status.</p>'}${chips()}${sbox('lt')}<div class="tw" id="lt" style="margin-top:8px"></div></div>
+${own()?`<div class="card"><b>Nyt item</b><div class="row"><div><label>Navn</label><input id="nn"></div><div><label>Kategori</label><select id="ncat">${CATS.map(c=>`<option ${c===cat?'selected':''}>${c}</option>`).join('')}</select></div><div><label>Købspris</label><input id="nb" type="number" value="0"></div><div><label>Salgspris</label><input id="ns" type="number" value="0"></div><div><button class="pri" onclick="addItem()">Tilføj</button></div></div></div>`:''}`}
+function lt(){const d=own()?'':'disabled',l=filt();let h='',last='';
+l.sort((a,b)=>CATS.indexOf(a.cat)-CATS.indexOf(b.cat)).forEach(i=>{if(i.cat!==last){h+=`<tr class="cat"><td colspan="8">${esc(i.cat)}</td></tr>`;last=i.cat}
+h+=`<tr><td>${esc(i.name)}</td><td><input ${d} type="number" value="${i.qty}" onchange="upd('${i.id}','qty',this.value)"></td><td><input ${d} type="number" value="${i.buy}" onchange="upd('${i.id}','buy',this.value)"></td><td><input ${d} type="number" value="${i.sell}" onchange="upd('${i.id}','sell',this.value)"></td><td><label style="margin:0;color:var(--tx)"><input ${d} type="checkbox" ${i.canBuy?'checked':''} onchange="flag('${i.id}','canBuy',this.checked)"> Vi køber</label></td><td><label style="margin:0;color:var(--tx)"><input ${d} type="checkbox" ${i.canSell?'checked':''} onchange="flag('${i.id}','canSell',this.checked)"> Vi sælger</label></td><td>${m(i.qty*i.buy)}</td><td>${own()?`<button class="del" onclick="delItem('${i.id}')">✕</button>`:''}</td></tr>`});
+$('#lt').innerHTML=l.length?`<table><tr><th>Item</th><th>På lager</th><th>Købspris</th><th>Salgspris</th><th>Køb</th><th>Salg</th><th>Værdi</th><th></th></tr>${h}</table>`:'<p class="mu">Ingen items i denne kategori endnu'+(own()?' – tilføj nedenfor.':'.')+'</p>'}
+function upd(id,f,v){edit(d=>{d.items.find(i=>i.id===id)[f]=Math.max(0,+v||0)})}
+function flag(id,f,v){edit(d=>{d.items.find(i=>i.id===id)[f]=v})}
+function delItem(id){if(confirm('Slet item?'))edit(d=>{d.items=d.items.filter(i=>i.id!==id)})}
+function addItem(){const n=$('#nn').value.trim();if(!n||dr().items.some(i=>i.name.toLowerCase()===n.toLowerCase()))return toast('Navn mangler eller findes');const it={id:uid(),name:n,cat:$('#ncat').value,qty:0,buy:+$('#nb').value||0,sell:+$('#ns').value||0,canBuy:true,canSell:true};edit(d=>{d.items.push(it)})}
+/* ---- Crafting ---- */
+function vCraft(){return`<datalist id="dl">${S.items.map(i=>`<option value="${esc(i.name)}">`).join('')}</datalist>${S.recipes.map(r=>{const o=item(r.out);if(!o)return'';const max=Math.min(...r.mats.map(x=>item(x.item)?Math.floor(item(x.item).qty/x.qty):0));
+return`<div class="card"><b>${r.outQty}× ${esc(o.name)}</b> <span class="mu">← ${r.mats.map(x=>x.qty+'× '+esc(item(x.item)?.name||'?')).join(' + ')}</span><div class="row" style="margin-top:8px"><div><label>Antal crafts (maks ${max})</label><input id="c${r.id}" type="number" min="1" value="1"></div><div><button class="pri" onclick="craft('${r.id}')">Craft</button> ${own()?`<button class="del" onclick="S.recipes=S.recipes.filter(x=>x.id!=='${r.id}');render()">Slet</button>`:''}</div></div></div>`}).join('')}
+<div class="card"><b>Ny opskrift</b><div class="row"><div><label>Resultat</label><input id="ro" list="dl"></div><div><label>Antal</label><input id="rq" type="number" value="1"></div><div style="flex-basis:260px"><label>Materialer (Navn:antal, Navn:antal)</label><input id="rm" placeholder="Gummi:5, Stål:2"></div><div><button class="pri" onclick="addRecipe()">Gem</button></div></div></div>`}
+function addRecipe(){const o=byName($('#ro').value);if(!o)return toast('Resultat-item findes ikke');const mats=$('#rm').value.split(',').map(s=>s.split(':')).map(([n,q])=>({item:byName(n)?.id,qty:+q})).filter(x=>x.item&&x.qty>0);if(!mats.length)return toast('Ugyldige materialer');S.recipes.push({id:uid(),out:o.id,outQty:+$('#rq').value||1,mats});render()}
+function craft(id){const r=S.recipes.find(x=>x.id===id),n=+$('#c'+id).value;if(!(n>0))return;for(const x of r.mats)if(item(x.item).qty<x.qty*n)return toast('Mangler '+item(x.item).name);
+r.mats.forEach(x=>item(x.item).qty-=x.qty*n);item(r.out).qty+=r.outQty*n;toast('Craftede '+r.outQty*n+'× '+item(r.out).name);render()}
+/* ---- Konkurrencer ---- */
+function vComp(){const list=cview==='all'?S.tx:S.tx.filter(t=>t.comp===cview),g={};
+list.forEach(t=>{const c=g[t.customer]??={n:cust(t.customer)?.name||'?',bought:0,sold:0};t.type==='salg'?c.bought+=t.total:c.sold+=t.total});
+const b=Object.values(g).map(c=>({...c,tot:c.bought+c.sold})).sort((a,b)=>b.tot-a.tot);
+return`${own()?`<div class="card"><b>Administrer konkurrencer</b>${dr().comps.slice().reverse().map(c=>`<div class="row" style="margin-top:8px"><input value="${esc(c.name)}" onchange="renComp('${c.id}',this.value)"></div>`).join('')}<div class="row" style="margin-top:10px"><div><label>Ny konkurrence</label><input id="cnw"></div><div><button class="pri" onclick="addComp()">Opret</button></div></div><p class="mu" style="margin:8px 0 0">Konkurrencer kan omdøbes, men aldrig slettes – gamle bevares.</p></div>`:''}
+<div class="card"><div class="row"><div><label>Vis leaderboard for</label><select onchange="cview=this.value;render()"><option value="all">Alle handler</option>${S.comps.slice().reverse().map(c=>`<option value="${c.id}" ${cview===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div></div>
+<div class="tw" style="margin-top:8px"><table><tr><th>#</th><th>Kunde</th><th>Købt for</th><th>Solgt for</th><th>Total</th></tr>${b.map((c,i)=>`<tr><td>${['🥇','🥈','🥉'][i]||i+1}</td><td>${esc(c.n)}</td><td>${m(c.bought)}</td><td>${m(c.sold)}</td><td><b>${m(c.tot)}</b></td></tr>`).join('')||'<tr><td class="mu">Ingen data endnu</td></tr>'}</table></div><p class="mu" style="margin:8px 0 0">Købt for = kunden har købt af os. Solgt for = kunden har solgt til os (inkl. smykke-udbetaling).</p></div>`}
+function addComp(){const n=$('#cnw').value.trim();if(!n)return;edit(d=>{d.comps.push({id:uid(),name:n})})}
+function renComp(id,v){v=v.trim();if(!v)return render();edit(d=>{d.comps.find(c=>c.id===id).name=v})}
+/* ---- Log ---- */
+function vLog(){const s=x=>S.tx.filter(t=>t.type===x).reduce((a,t)=>a+t.total,0);
+return`<div class="card row"><div><label>Salg</label><b class="ok">${m(s('salg'))}</b></div><div><label>Udbetalt til kunder</label><b class="bad">${m(s('koeb'))}</b></div></div>
+<div class="card tw"><table><tr><th>Tid</th><th>Type</th><th>Indhold</th><th>Total</th><th>Kunde</th><th>Konk.</th><th>Medarb.</th></tr>${S.tx.slice().reverse().map(t=>`<tr><td>${new Date(t.t).toLocaleString('da-DK',{dateStyle:'short',timeStyle:'short'})}</td><td class="${t.type==='salg'?'ok':'bad'}">${t.type==='salg'?'Salg':'Køb'}</td><td>${esc(t.lines.map(x=>x.qty+'× '+x.name).join(', '))}${t.jewelry?esc((t.lines.length?' + ':'')+'Smykker '+m(t.jewelry)+' → '+m(t.jewelPayout)):''}</td><td>${m(t.total)}</td><td>${esc(cust(t.customer)?.name||'?')}</td><td>${esc(S.comps.find(c=>c.id===t.comp)?.name||'–')}</td><td>${esc(emp(t.emp)?.name||'?')}</td></tr>`).join('')||'<tr><td class="mu">Ingen handler</td></tr>'}</table></div>`}
+/* ---- Ansatte ---- */
+const tot=(id,since=0)=>S.hours.filter(h=>h.emp===id).reduce((a,h)=>a+Math.max(0,(h.out||Date.now())-Math.max(h.in,since)),0);
+function perf(id){const l=S.tx.filter(t=>t.emp===id),h=tot(id)/36e5,earn=l.filter(t=>t.onShift).reduce((a,t)=>a+(t.profit||0),0);return{n:l.length,b:l.filter(t=>t.type==='koeb').reduce((a,t)=>a+t.total,0),s:l.filter(t=>t.type==='salg').reduce((a,t)=>a+t.total,0),earn,h,ph:h>0?earn/h:null}}
+function vEmp(){const o=own(),R=[0,1,2,3,4,5],P=S.emps.map(e=>({e,...perf(e.id)})).sort((a,b)=>b.earn-a.earn);
+return`<div class="card"><b>Medarbejdere & performance</b><div class="tw"><table><tr><th>Navn</th><th>Brugernavn</th><th>Rang</th><th>Status</th><th>Handler</th><th>Købt for</th><th>Solgt for</th><th>Tjent til shoppen</th><th>Timer</th><th>Tjent / time</th></tr>${P.map(r=>`<tr><td><b>${esc(r.e.name)}</b></td><td>${esc(r.e.user)}</td><td>${r.e.rank===5?'Ejer (5)':'Grad '+r.e.rank}</td><td>${open(r.e.id)?'<span class="ok">🟢 På arbejde</span>':'<span class="mu">⚪ Ude</span>'}</td><td>${r.n}</td><td>${m(r.b)}</td><td>${m(r.s)}</td><td class="${r.earn>=0?'ok':'bad'}"><b>${m(r.earn)}</b></td><td>${hm(r.h*36e5)}</td><td><b>${r.ph==null?'–':m(r.ph)+'/t'}</b></td></tr>`).join('')}</table></div>
+<p class="mu" style="margin:8px 0 0">Købt for = indkøb fra kunder. Solgt for = salg til kunder. Tjent = avance på salg (salgspris − købspris) + smykke-margin, kun for handler lavet mens man var stemplet ind. Tjent/time = tjent ÷ alle arbejdstimer.</p></div>
+${o?`<div class="card"><b>Rediger ansatte</b><div class="tw"><table><tr><th>Navn</th><th>Brugernavn</th><th>Adgangskode</th><th>Rang</th><th></th></tr>${dr().emps.map(e=>`<tr><td><input value="${esc(e.name)}" onchange="editEmp('${e.id}','name',this.value)"></td><td><input value="${esc(e.user)}" onchange="editEmp('${e.id}','user',this.value)"></td><td><input type="password" value="${esc(e.pwv||'')}" onchange="editEmp('${e.id}','pw',this.value)"> <button onclick="const i=this.previousElementSibling;i.type=i.type==='password'?'text':'password'">👁</button></td><td><select onchange="setRank('${e.id}',+this.value)">${R.map(r=>`<option value="${r}" ${e.rank===r?'selected':''}>${r===5?'5 – Ejer':'Grad '+r}</option>`).join('')}</select></td><td>${e.id!==sess?`<button class="del" onclick="delEmp('${e.id}')">✕</button>`:''}</td></tr>`).join('')}</table></div></div>
+<div class="card"><b>Ny medarbejder</b><div class="row"><div><label>Navn</label><input id="en"></div><div><label>Brugernavn</label><input id="eu" autocomplete="off"></div><div><label>Password (min. 4)</label><input id="ep" type="password" autocomplete="new-password"></div><div><label>Rang</label><select id="er">${R.map(r=>`<option>${r}</option>`).join('')}</select></div><div><button class="pri" onclick="addEmp()">Tilføj</button></div></div></div>`:''}
+<div class="card"><b>Stempelur-log</b><div class="tw"><table><tr><th>Medarbejder</th><th>Ind</th><th>Ud</th><th>Varighed</th></tr>${S.hours.slice().reverse().slice(0,25).map(h=>`<tr><td>${esc(emp(h.emp)?.name||'?')}</td><td>${new Date(h.in).toLocaleString('da-DK')}</td><td>${h.out?new Date(h.out).toLocaleString('da-DK'):'<span class="ok">I gang</span>'}</td><td>${hm((h.out||Date.now())-h.in)}</td></tr>`).join('')||'<tr><td class="mu">Ingen registreringer</td></tr>'}</table></div></div>`}
+function vAdmin(){return`<div class="card"><b>⚙️ Indstillinger</b><div class="row" style="margin-top:8px"><div><label>Smykke-udbetaling (% af beløb)</label><input type="number" min="0" max="100" value="${dr().settings.jp}" onchange="setJp(this.value)"></div></div><p class="mu" style="margin:8px 0 0">Standard 90 % (beløb × 0.9). Gemmes med 💾 Gem i bunden.</p></div>
+<div class="card"><b>🔄 Nulstil handler</b><p class="mu">Sletter KUN handelshistorikken (${S.tx.length} handler). Leaderboards, kundestatistik og medarbejder-performance starter forfra. Kunder, lager, items, ansatte, konkurrencer og stempeltider bevares.</p><button class="del" onclick="resetTx()">Nulstil handler</button></div>`}
+function setJp(v){edit(d=>{d.settings.jp=Math.min(100,Math.max(0,+v||0))})}
+function resetTx(){if(!own())return;if(D)return toast('Gem eller fortryd dine ændringer først');if(prompt('Skriv NULSTIL for at slette ALLE handler (kunder, lager, items og ansatte bevares):')==='NULSTIL'){S.tx=[];toast('Handler nulstillet');render()}}
+function setRank(id,r){edit(d=>{d.emps.find(e=>e.id===id).rank=r})}
+function editEmp(id,f,v){v=v.trim();if(!v){toast('Må ikke være tom');return render()}
+if(f==='user'){v=v.toLowerCase().replace(/\s/g,'');if(dr().emps.some(e=>e.user===v&&e.id!==id)){toast('Brugernavnet er taget');return render()}}
+if(f==='pw'&&v.length<4){toast('Password: min. 4 tegn');return render()}
+edit(d=>{const e=d.emps.find(x=>x.id===id);if(f==='name')e.name=v;if(f==='user'){e.user=v;e.pw=hp(e.pwv,v)}if(f==='pw'){e.pwv=v;e.pw=hp(v,e.user)}})}
+function addEmp(){const n=$('#en').value.trim(),u=$('#eu').value.trim().toLowerCase().replace(/\s/g,''),p=$('#ep').value;if(!n||!u)return toast('Navn og brugernavn mangler');if(p.length<4)return toast('Password skal være mindst 4 tegn');if(dr().emps.some(e=>e.user===u))return toast('Brugernavnet er taget');const e={id:uid(),name:n,user:u,pw:hp(p,u),pwv:p,rank:+$('#er').value};edit(d=>{d.emps.push(e)})}
+function delEmp(id){if(id!==sess&&confirm('Fjern medarbejder?'))edit(d=>{d.emps=d.emps.filter(e=>e.id!==id)})}
+function hp(s,u){s=u+':'+s;let a=0xdeadbeef,b=0x41c6ce57;for(let i=0,c;i<s.length;i++){c=s.charCodeAt(i);a=Math.imul(a^c,2654435761);b=Math.imul(b^c,1597334677)}a=Math.imul(a^(a>>>16),2246822507)^Math.imul(b^(b>>>13),3266489909);b=Math.imul(b^(b>>>16),2246822507)^Math.imul(a^(a>>>13),3266489909);return(4294967296*(2097151&b)+(a>>>0)).toString(36)}
+let fails=0,lockUntil=0;
+function login(){if(Date.now()<lockUntil){$('#le').textContent='For mange forsøg – vent '+Math.ceil((lockUntil-Date.now())/1000)+' sek.';return}
+const u=$('#lu').value.trim().toLowerCase(),e=S.emps.find(x=>x.user===u&&x.pw===hp($('#lp').value,u));
+if(!e){if(++fails>=5){fails=0;lockUntil=Date.now()+30000}$('#le').textContent='Forkert brugernavn eller password';return}
+fails=0;$('#le').textContent='';sess=e.id;try{sessionStorage.setItem('pawn_sess',sess)}catch(x){}$('#lp').value='';render()}
+function logout(){sess=null;D=null;cart=[];tab='handel';try{sessionStorage.removeItem('pawn_sess')}catch(e){}render()}
+function go(k){if(D&&(k==='handel'||k==='craft'))return toast('Gem eller fortryd dine ændringer først');tab=k;render()}
+function edit(fn){if(!own())return toast('Kun ejere (grad 5) har adgang til dette');if(!D)D=JSON.parse(JSON.stringify({items:S.items,comps:S.comps,emps:S.emps,settings:S.settings}));fn(D);render()}
+function saveAll(){if(!own()||!D)return;if(!D.emps.some(e=>e.rank===5))return toast('Der skal mindst være én ejer');if(!(D.settings.jp>=0&&D.settings.jp<=100))return toast('Ugyldig smykke-procent');S.items=D.items;S.comps=D.comps;S.emps=D.emps;S.settings=D.settings;D=null;toast('✅ Ændringer gemt');render()}
+function cancel(){D=null;toast('Ændringer fortrudt');render()}
+/* ---- Kunder ---- */
+function kstat(id){const l=S.tx.filter(t=>t.customer===id),b=l.filter(t=>t.type==='salg').reduce((a,t)=>a+t.total,0),s=l.filter(t=>t.type==='koeb').reduce((a,t)=>a+t.total,0);return{l,n:l.length,b,s,net:b-s}}
+function vKunder(){return`<div class="card"><input placeholder="🔍 Søg kunde…" value="${esc(kq)}" oninput="kq=this.value;kl()" style="width:100%"><div class="tw" id="kl" style="margin-top:8px"></div><p class="mu" style="margin:8px 0 0">Total køb = kunden har købt af os. Total salg = kunden har solgt til os. Netto = køb − salg.</p></div><div id="kh"></div>`}
+function kl(){const v=kq.trim().toLowerCase(),rows=S.customers.filter(c=>c.name.toLowerCase().includes(v)).map(c=>({c,...kstat(c.id)})).sort((a,b)=>b.n-a.n);
+$('#kl').innerHTML=`<table><tr><th>Kunde</th><th>Handler</th><th>Total køb</th><th>Total salg</th><th>Netto resultat</th></tr>${rows.map(r=>`<tr style="cursor:pointer;${ksel===r.c.id?'background:var(--bg)':''}" onclick="ksel='${r.c.id}';kl()"><td><b>${esc(r.c.name)}</b></td><td>${r.n}</td><td>${m(r.b)}</td><td>${m(r.s)}</td><td class="${r.net>=0?'ok':'bad'}">${m(r.net)}</td></tr>`).join('')||'<tr><td class="mu">Ingen kunder</td></tr>'}</table>`;
+const c=ksel&&cust(ksel);$('#kh').innerHTML=c?`<div class="card"><b>Historik – ${esc(c.name)}</b><div class="tw"><table><tr><th>Tid</th><th>Type</th><th>Indhold</th><th>Total</th><th>Konk.</th><th>Medarb.</th></tr>${kstat(c.id).l.slice().reverse().map(t=>`<tr><td>${new Date(t.t).toLocaleString('da-DK',{dateStyle:'short',timeStyle:'short'})}</td><td class="${t.type==='salg'?'ok':'bad'}">${t.type==='salg'?'Købte':'Solgte'}</td><td>${esc(t.lines.map(x=>x.qty+'× '+x.name).join(', '))}${t.jewelry?esc((t.lines.length?' + ':'')+'Smykker '+m(t.jewelry)):''}</td><td>${m(t.total)}</td><td>${esc(S.comps.find(x=>x.id===t.comp)?.name||'–')}</td><td>${esc(emp(t.emp)?.name||'?')}</td></tr>`).join('')||'<tr><td class="mu">Ingen handler</td></tr>'}</table></div></div>`:'<p class="mu">Klik på en kunde for at se historik.</p>'}
+function JP(){return(S.settings?.jp??90)/100}
+if(window.GetParentResourceName){document.body.style.display='none';addEventListener('message',e=>{if(e.data?.action==='open')document.body.style.display='';if(e.data?.action==='close')document.body.style.display='none'});addEventListener('keydown',e=>{if(e.key==='Escape'&&!D)fetch('https://'+GetParentResourceName()+'/close',{method:'POST',body:'{}'})})}
+render();
+</script></body></html>
