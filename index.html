@@ -39,7 +39,26 @@ td input:not([type=number]):not([type=checkbox]){width:140px}
 <nav id="nav"></nav><main id="v"></main><div id="login"><div class="card" style="width:min(360px,92vw)"><h1>🏷️ <span>Pawnshop</span> Login</h1><div style="margin-top:12px"><label>Brugernavn</label><input id="lu" style="width:100%" autocomplete="username" onkeydown="if(event.key==='Enter')$('#lp').focus()"></div><div style="margin:10px 0"><label>Password</label><input id="lp" type="password" style="width:100%" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()"></div><button class="pri" style="width:100%" onclick="login()">Log ind</button><p class="bad" id="le"></p><p class="mu" style="font-size:12px;margin:0">Kun for ansatte.</p></div></div>
 <div id="bar"><span>⚠️ Du har ændringer, der ikke er gemt</span><span><button onclick="cancel()">Fortryd</button> <button class="pri" onclick="saveAll()">💾 Gem</button></span></div>
 <div id="toast"></div>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script> 
 <script>
+const firebaseConfig = {
+  apiKey: "AIzaSyB3IUiZc2itHGhpDCejNUEYXQ8c3yFZnQM",
+  authDomain: "mirrorpark-pawnshop.firebaseapp.com",
+  projectId: "mirrorpark-pawnshop",
+  storageBucket: "mirrorpark-pawnshop.firebasestorage.app",
+  messagingSenderId: "1028946790870",
+  appId: "1:1028946790870:web:6a60709f04c726f62cfc77",
+  measurementId: "G-6BSN77ZJSJ"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const DB_DOC = db.collection('app').doc('state');
+
+let firebaseLoaded = false;
+let applyingRemote = false;
+let saveTimer = null;
 const K='pawn_v7',CATS=['Elektronik','Lockpicks','Andet','Materialer','Raffinerede materialer','Stoffer','Veste & Plader','Accessories','Skud','Våben'];
 let sess=null,D=null,kq='',ksel=null,S,tab='handel',type='koeb',q='',cat='Alle',cart=[],jw=0,cuName='',cuId=null,ck='',cview='all';
 const $=s=>document.querySelector(s),uid=()=>Math.random().toString(36).slice(2,9);
@@ -57,7 +76,47 @@ return{items,tx:[],hours:[],customers:[c('Simon'),c('Simone'),c('Simon Jensen'),
 recipes:[{id:uid(),out:id('Raf. Gummi'),outQty:1,mats:[{item:id('Gummi'),qty:5}]},{id:uid(),out:id('Normal Lockpick'),outQty:1,mats:[{item:id('Raf. Stål'),qty:1},{item:id('Plastik'),qty:2}]}]}}
 try{S=JSON.parse(localStorage.getItem(K))}catch(e){}if(!S)S=seed();
 try{sess=sessionStorage.getItem('pawn_sess')}catch(e){}
-const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
+DB_DOC.onSnapshot(async snap=>{
+  if(snap.exists){
+    applyingRemote=true;
+    S=snap.data().state;
+    firebaseLoaded=true;
+    render();
+    applyingRemote=false;
+  }else{
+    firebaseLoaded=true;
+
+    try{
+      await DB_DOC.set({
+        state:S,
+        updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }catch(e){
+      console.error('Firebase init error:',e);
+      toast('Kunne ikke oprette Firebase-data');
+    }
+  }
+},err=>{
+  console.error('Firebase error:',err);
+  toast('Firebase-fejl: '+err.message);
+});
+const save=()=>{
+  if(!firebaseLoaded || applyingRemote) return;
+
+  clearTimeout(saveTimer);
+
+  saveTimer=setTimeout(async()=>{
+    try{
+      await DB_DOC.set({
+        state:S,
+        updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }catch(e){
+      console.error('Firebase save error:',e);
+      toast('Kunne ikke gemme til Firebase');
+    }
+  },150);
+};
 const toast=t=>{const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2600)};
 const item=id=>S.items.find(i=>i.id===id),byName=n=>S.items.find(i=>i.name.toLowerCase()===(n||'').trim().toLowerCase());
 const me=()=>S.emps.find(e=>e.id===sess),own=()=>me()?.rank===5,dr=()=>D||S,emp=id=>S.emps.find(e=>e.id===id),cust=id=>S.customers.find(c=>c.id===id);
